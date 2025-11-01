@@ -1,0 +1,26 @@
+{
+  "name": "flare-worker",
+  "version": "0.1.0",
+  "description": "Cloudflare Worker for Flare serverless Python execution",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "test": "vitest"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "serverless",
+    "python"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/sandbox": "*",
+    "@types/node": "^24.9.2",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.45.3"
+  }
+}

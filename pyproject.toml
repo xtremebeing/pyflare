@@ -1,0 +1,33 @@
+[project]
+name = "flare"
+version = "0.1.0"
+description = "Serverless Python execution on Cloudflare Sandboxes"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cloudpickle>=3.0.0",
+    "httpx>=0.27.0",
+    "click>=8.1.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+flare = "flare.cli.main:cli"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+]
+
+# Don't try to build the package yet (no flare/ directory exists)
+[tool.hatch.build]
+skip-excluded-dirs = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
