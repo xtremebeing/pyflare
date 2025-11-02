@@ -38,6 +38,7 @@ class App:
         max_containers: int | None = None,
         min_containers: int = 0,
         timeout: int = 300,
+        env: dict[str, str] | None = None,
         **options: object,
     ) -> CallableType[[CallableType[..., object]], Function]:
         """
@@ -47,11 +48,18 @@ class App:
             max_containers: Max parallel sandboxes (default: Worker's max_instances)
             min_containers: Min sandboxes to keep warm (default: 0, not implemented yet)
             timeout: Execution timeout in seconds (default: 300, max: 86400/24hrs)
+            env: Environment variables to inject into sandbox (default: None)
             **options: Additional options for future use
 
         Usage:
             @app.function(max_containers=10, timeout=600)
             def process(x):
+                return x * 2
+
+            @app.function(env={"API_KEY": "secret_value"})
+            def authenticated_task(x):
+                import os
+                api_key = os.environ['API_KEY']
                 return x * 2
         """
 
@@ -74,6 +82,7 @@ class App:
                 "max_containers": max_containers,
                 "min_containers": min_containers,
                 "timeout": timeout,
+                "env": env or {},
                 **options,
             }
 

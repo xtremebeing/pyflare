@@ -56,13 +56,25 @@ export async function handleExecute(
     const sandbox = getSandbox(env.Sandbox, sandboxIdStr);
 
     // Create fresh Python context for each execution (isolation)
-    const pythonCtx = await sandbox.createCodeContext({ language: "python" });
+    const pythonCtx = await sandbox.createCodeContext({
+      language: "python",
+      envVars: body.env || {},
+    });
 
-    // Build execution code
+    // Build execution code with env var injection
+    const envVarsCode = body.env && Object.keys(body.env).length > 0
+      ? `import os\n${Object.entries(body.env).map(([key, value]) =>
+          `os.environ['${key}'] = ${JSON.stringify(value)}`
+        ).join('\n')}\n`
+      : '';
+
     const executionCode = `
 import cloudpickle
 import sys
 import traceback
+
+# Inject environment variables
+${envVarsCode}
 
 # Load user code (define the function)
 ${body.code}
@@ -160,6 +172,7 @@ except Exception as e:
     });
   } catch (error) {
     console.error("Execution error:", error);
+
     const response: ExecuteResponse = {
       success: false,
       error: error instanceof Error ? error.message : "Execution failed",

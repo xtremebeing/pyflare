@@ -43,6 +43,7 @@ class Function:
     def remote(self, *args: object, **kwargs: object) -> object:
         """Execute function remotely in Cloudflare Sandbox"""
         timeout = self.options.get("timeout", 300)
+        env = self.options.get("env", {})
 
         result, metadata = self.app.executor.execute(
             function_id=self.id,
@@ -51,6 +52,7 @@ class Function:
             args=args,
             kwargs=kwargs,
             timeout=timeout,
+            env=env,
         )
 
         self.last_metadata = metadata
@@ -68,6 +70,7 @@ class Function:
         """Execute function in parallel across multiple sandboxes"""
         max_containers = self.options.get("max_containers")
         timeout = self.options.get("timeout", 300)
+        env = self.options.get("env", {})
 
         results, metadata = self.app.executor.execute_batch(
             function_id=self.id,
@@ -76,6 +79,7 @@ class Function:
             items=items,
             max_containers=max_containers,
             timeout=timeout,
+            env=env,
         )
 
         self.last_metadata = metadata

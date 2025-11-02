@@ -43,17 +43,38 @@ class FunctionSerializer:
             )
 
         # Remove decorator lines (e.g., @app.function())
+        # Handle multi-line decorators by tracking parentheses
         source_lines = source.split("\n")
         cleaned_lines = []
+        in_decorator = False
+        paren_count = 0
+
         for line in source_lines:
             stripped = line.strip()
-            # Skip decorator lines
+
+            # Check if this line starts a decorator
             if (
                 stripped.startswith("@")
                 and not stripped.startswith("@staticmethod")
                 and not stripped.startswith("@classmethod")
             ):
+                in_decorator = True
+                paren_count = stripped.count("(") - stripped.count(")")
+
+                # If decorator completes on same line (paren_count == 0), skip and reset
+                if paren_count == 0:
+                    in_decorator = False
                 continue
+
+            # If we're inside a multi-line decorator, track parentheses
+            if in_decorator:
+                paren_count += stripped.count("(") - stripped.count(")")
+                # When parentheses balance, decorator is complete
+                if paren_count == 0:
+                    in_decorator = False
+                continue
+
+            # Not a decorator line, keep it
             cleaned_lines.append(line)
 
         # Remove common leading indentation but preserve relative indentation

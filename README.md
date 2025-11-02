@@ -100,6 +100,25 @@ def slow_task(x):
     return x * 2
 ```
 
+### Environment Variables
+
+```python
+import os
+
+@app.function(env={"API_KEY": "secret_value"})
+def authenticated_task(x):
+    import os
+    api_key = os.environ['API_KEY']
+    return x * 2
+
+# Load from local environment
+@app.function(env={"TOKEN": os.getenv("MY_TOKEN")})
+def process(x):
+    import os
+    token = os.environ['TOKEN']
+    return x * 2
+```
+
 ### CLI Arguments
 
 ```python

@@ -8,6 +8,7 @@ interface ExecuteBatchRequest {
   items: string[]; // Array of hex-encoded cloudpickle items
   max_containers?: number; // Max parallel sandboxes
   timeout?: number; // Execution timeout in seconds per item
+  env?: Record<string, string>; // Environment variables to inject into sandbox
 }
 
 interface SandboxResult {
@@ -36,7 +37,8 @@ async function executeItem(
   code: string,
   functionName: string,
   itemHex: string,
-  timeoutSeconds: number = 300
+  timeoutSeconds: number = 300,
+  envVars: Record<string, string> = {}
 ): Promise<ExecuteResponse> {
   // Track execution timing
   const startedAt = new Date().toISOString();
@@ -46,14 +48,26 @@ async function executeItem(
   const sandboxId = `${functionId}-${crypto.randomUUID().slice(0, 8)}`;
   const sandbox = getSandbox(env.Sandbox, sandboxId);
 
-  // Create fresh Python context
-  const pythonCtx = await sandbox.createCodeContext({ language: "python" });
+  // Create fresh Python context with environment variables
+  const pythonCtx = await sandbox.createCodeContext({
+    language: "python",
+    envVars: envVars,
+  });
 
-  // Build execution code
+  // Build execution code with env var injection
+  const envVarsCode = envVars && Object.keys(envVars).length > 0
+    ? `import os\n${Object.entries(envVars).map(([key, value]) =>
+        `os.environ['${key}'] = ${JSON.stringify(value)}`
+      ).join('\n')}\n`
+    : '';
+
   const executionCode = `
 import cloudpickle
 import sys
 import traceback
+
+# Inject environment variables
+${envVarsCode}
 
 # Load user code (define the function)
 ${code}
@@ -220,7 +234,7 @@ export async function handleExecuteBatch(
     // Execute batches sequentially, items within batch in parallel
     for (const batch of batches) {
       const batchTasks = batch.map((itemHex) =>
-        executeItem(env, body.function_id, body.code, body.function_name, itemHex, timeout)
+        executeItem(env, body.function_id, body.code, body.function_name, itemHex, timeout, body.env || {})
       );
 
       const batchResults = await Promise.all(batchTasks);

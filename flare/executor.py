@@ -37,8 +37,12 @@ class RemoteExecutor:
         args: tuple[object, ...],
         kwargs: dict[str, object],
         timeout: int = 300,
+        env: dict[str, str] | None = None,
     ) -> tuple[object, dict[str, object]]:
         """Execute a single function remotely
+
+        Args:
+            env: Environment variables to inject into sandbox
 
         Returns:
             Tuple of (result, metadata) where metadata contains execution info
@@ -48,18 +52,25 @@ class RemoteExecutor:
         args_hex = cloudpickle.dumps(args).hex()
         kwargs_hex = cloudpickle.dumps(kwargs).hex()
 
+        # Prepare request payload
+        payload = {
+            "function_id": function_id,
+            "code": code,
+            "function_name": function_name,
+            "args": args_hex,
+            "kwargs": kwargs_hex,
+            "timeout": timeout,
+        }
+
+        # Add env vars if provided
+        if env:
+            payload["env"] = env
+
         # Make request to Worker
         try:
             response = self.client.post(
                 f"{self.worker_url}/execute",
-                json={
-                    "function_id": function_id,
-                    "code": code,
-                    "function_name": function_name,
-                    "args": args_hex,
-                    "kwargs": kwargs_hex,
-                    "timeout": timeout,
-                },
+                json=payload,
                 timeout=timeout + 10,  # Add buffer for network overhead
             )
             _ = response.raise_for_status()
@@ -104,8 +115,12 @@ class RemoteExecutor:
         items: list[object],
         max_containers: int | None = None,
         timeout: int = 300,
+        env: dict[str, str] | None = None,
     ) -> tuple[list[object], dict[str, object]]:
         """Execute function in parallel across multiple sandboxes
+
+        Args:
+            env: Environment variables to inject into sandbox
 
         Returns:
             Tuple of (results, metadata) where metadata contains batch execution info
@@ -125,6 +140,9 @@ class RemoteExecutor:
 
         if max_containers is not None:
             payload["max_containers"] = max_containers
+
+        if env:
+            payload["env"] = env
 
         # Calculate total timeout for batch (with buffer)
         # Batches run sequentially, so total time = (items / max_containers) * timeout

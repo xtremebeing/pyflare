@@ -8,6 +8,7 @@ export interface ExecuteRequest {
   args: string; // Hex-encoded cloudpickle
   kwargs: string; // Hex-encoded cloudpickle
   timeout?: number; // Execution timeout in seconds (default: 300)
+  env?: Record<string, string>; // Environment variables to inject into sandbox
 }
 
 export interface ExecuteResponse {
