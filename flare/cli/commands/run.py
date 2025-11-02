@@ -3,10 +3,77 @@ flare run command
 """
 
 import sys
+import os
+import subprocess
 import importlib.util
 from pathlib import Path
 import click
 from ...config import load_config
+
+
+def find_project_python(script_path: Path) -> str | None:
+    """
+    Find the Python interpreter for the script's project environment.
+
+    Checks for:
+    - .venv directory (uv, pip/venv, poetry in-project)
+    - uv managed environments (via pyproject.toml)
+    - poetry managed environments
+
+    Returns:
+        Path to project's Python interpreter, or None if not found
+    """
+    current = script_path.parent
+
+    while current != current.parent:
+        # Check for common venv directory names
+        for venv_dir in [".venv", "venv", "env"]:
+            venv_python = current / venv_dir / "bin" / "python"
+            if venv_python.exists():
+                return str(venv_python)
+
+        # Check if this is a project root (has pyproject.toml)
+        if (current / "pyproject.toml").exists():
+            # Try uv to get the project's Python
+            try:
+                result = subprocess.run(
+                    ["uv", "run", "python", "-c", "import sys; print(sys.executable)"],
+                    cwd=current,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.returncode == 0:
+                    python_path = result.stdout.strip()
+                    if python_path and Path(python_path).exists():
+                        return python_path
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+
+            # Try poetry
+            try:
+                result = subprocess.run(
+                    ["poetry", "env", "info", "-p"],
+                    cwd=current,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.returncode == 0:
+                    poetry_venv = result.stdout.strip()
+                    if poetry_venv:
+                        poetry_python = Path(poetry_venv) / "bin" / "python"
+                        if poetry_python.exists():
+                            return str(poetry_python)
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+
+            # Found project root but couldn't determine Python
+            break
+
+        current = current.parent
+
+    return None
 
 
 def run_script(script_ref: str, show_output: bool = False, **kwargs: object) -> None:
@@ -26,6 +93,36 @@ def run_script(script_ref: str, show_output: bool = False, **kwargs: object) -> 
     parts = script_ref.split("::")
     script_path = Path(parts[0]).resolve()
     function_name = parts[1] if len(parts) > 1 else None
+
+    # Check if we should re-execute in the project's environment
+    # This allows user project dependencies to be available
+    if not os.getenv("FLARE_IN_PROJECT_ENV"):
+        project_python = find_project_python(script_path)
+
+        # If we found a different Python interpreter, re-execute using it
+        if project_python and project_python != sys.executable:
+            # Build command to re-execute (preserve ::function syntax if present)
+            script_arg = str(script_path)
+            if function_name:
+                script_arg = f"{script_path}::{function_name}"
+
+            cmd = [project_python, "-m", "flare.cli.main", "run", script_arg]
+
+            # Add --execution flag if needed
+            if show_output:
+                cmd.append("--execution")
+
+            # Add all kwargs as arguments
+            for key, value in kwargs.items():
+                cmd.append(f"--{key}")
+                cmd.append(str(value))
+
+            # Set environment variable to prevent infinite re-execution
+            env = {**os.environ, "FLARE_IN_PROJECT_ENV": "1"}
+
+            # Execute and exit with same code (preserve current working directory)
+            result = subprocess.run(cmd, env=env, cwd=os.getcwd())
+            sys.exit(result.returncode)
 
     # Colors
     RED = "\033[0;31m"

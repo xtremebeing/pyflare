@@ -45,6 +45,9 @@ class Function:
         timeout = self.options.get("timeout", 300)
         env = self.options.get("env", {})
 
+        # Filter out None values from env
+        env = {k: v for k, v in env.items() if v is not None}
+
         result, metadata = self.app.executor.execute(
             function_id=self.id,
             code=self.serialized["code"],
@@ -71,6 +74,9 @@ class Function:
         max_containers = self.options.get("max_containers")
         timeout = self.options.get("timeout", 300)
         env = self.options.get("env", {})
+
+        # Filter out None values from env
+        env = {k: v for k, v in env.items() if v is not None}
 
         results, metadata = self.app.executor.execute_batch(
             function_id=self.id,

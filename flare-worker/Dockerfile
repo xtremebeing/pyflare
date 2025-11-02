@@ -7,5 +7,8 @@ FROM docker.io/cloudflare/sandbox:0.4.14
 # Pin to same version as client to avoid compatibility issues
 RUN pip install --no-cache-dir 'cloudpickle>=3.0.0,<4.0.0'
 
+# Install common packages for data processing and cloud access
+RUN pip install --no-cache-dir boto3 requests pyiceberg pyarrow
+
 # Required during local development to access exposed ports
 EXPOSE 8080

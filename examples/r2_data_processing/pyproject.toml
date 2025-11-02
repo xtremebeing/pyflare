@@ -1,0 +1,17 @@
+[project]
+name = "r2-data-processing-example"
+version = "0.1.0"
+description = "R2 data processing example for Flare"
+requires-python = ">=3.13"
+dependencies = [
+    "flare",
+    "python-dotenv>=1.0.0",
+    "boto3>=1.34.0",
+    "pyiceberg>=0.7.0",
+    "pyarrow>=14.0.0",
+    "pandas>=2.0.0",
+    "numpy>=1.26.0",
+]
+
+[tool.uv.sources]
+flare = { path = "../..", editable = true }

@@ -12,6 +12,7 @@ flare run examples/parallel_basic.py
 flare run examples/timeout_demo.py
 flare run examples/args_demo.py --name Alice --count 5
 flare run examples/secrets_demo.py
+flare run examples/r2_data_processing/process.py --execution
 ```
 
 ## What's Included
@@ -21,5 +22,6 @@ flare run examples/secrets_demo.py
 - **`timeout_demo.py`** - Timeout configuration and error handling
 - **`args_demo.py`** - CLI argument passing
 - **`secrets_demo.py`** - Environment variables and secrets
+- **`r2_data_processing/`** - Parallel data processing with R2, PyIceberg, and PyArrow
 
 See the [main README](../README.md) for full documentation.
