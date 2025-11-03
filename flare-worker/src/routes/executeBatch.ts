@@ -29,7 +29,8 @@ function chunk<T>(array: T[], size: number): T[][] {
 }
 
 /**
- * Execute a single item in a sandbox
+ * Execute a single item in a sandbox.
+ * Reuses sandboxes per function for warmth - sandboxes auto-stop after 10min inactivity.
  */
 async function executeItem(
   env: Env,
@@ -38,15 +39,18 @@ async function executeItem(
   functionName: string,
   itemHex: string,
   timeoutSeconds: number = 300,
-  envVars: Record<string, string> = {}
+  envVars: Record<string, string> = {},
+  sandboxIndex: number = 0
 ): Promise<ExecuteResponse> {
   // Track execution timing
   const startedAt = new Date().toISOString();
   const startTime = Date.now();
 
-  // Create unique sandbox ID for this execution
-  const sandboxId = `${functionId}-${crypto.randomUUID().slice(0, 8)}`;
-  const sandbox = getSandbox(env.Sandbox, sandboxId);
+  // Reuse sandbox from pool for warmth (auto-stops after 10min inactivity)
+  // Using stable pool of sandboxes (one per index) for parallel execution
+  const sandboxId = env.Sandbox.idFromName(`${functionId}-${sandboxIndex}`);
+  const sandboxIdStr = sandboxId.toString();
+  const sandbox = getSandbox(env.Sandbox, sandboxIdStr);
 
   // Create fresh Python context with environment variables
   const pythonCtx = await sandbox.createCodeContext({
@@ -173,14 +177,7 @@ except Exception as e:
       completed_at: completedAt,
     };
   } finally {
-    // Always destroy sandbox after execution to free resources
-    // Per-task sandboxes should be cleaned up immediately
-    try {
-      await sandbox.destroy();
-    } catch (error) {
-      // Log but don't fail if cleanup fails
-      console.error(`Failed to destroy sandbox ${sandboxId}:`, error);
-    }
+    // Sandbox kept warm for reuse (auto-stops after 10min inactivity)
   }
 }
 
@@ -233,8 +230,17 @@ export async function handleExecuteBatch(
 
     // Execute batches sequentially, items within batch in parallel
     for (const batch of batches) {
-      const batchTasks = batch.map((itemHex) =>
-        executeItem(env, body.function_id, body.code, body.function_name, itemHex, timeout, body.env || {})
+      const batchTasks = batch.map((itemHex, index) =>
+        executeItem(
+          env,
+          body.function_id,
+          body.code,
+          body.function_name,
+          itemHex,
+          timeout,
+          body.env || {},
+          index
+        )
       );
 
       const batchResults = await Promise.all(batchTasks);
